@@ -15,9 +15,9 @@ URL_BASE_DADOS = "https://github.com/luizhahn1-lab/lotofacil-intelligence/blob/m
 
 # --- BANCO DE DADOS DE CLIENTES (Para começar a vender) ---
 USUARIOS_ATIVOS = {
-    "admin": "master77",      # Seu acesso
-    "cliente01": "vip2026",   # Exemplo de cliente que pagou
-    "teste": "123"            # Acesso para demonstração
+    "admin": "master77",
+    "cliente01": "vip2026",
+    "joao_silva": "senha9988", # Novo cliente adicionado
 }
 
 # ==============================================================================
