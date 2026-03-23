@@ -35,7 +35,20 @@ USUARIOS_ATIVOS = {
     "cliente01": "vip2026",
     "joao_silva": "senha9988", # Novo cliente adicionado
 }
+if login():
+    # BARRA LATERAL (Note os 4 espaços de recuo aqui)
+    st.sidebar.title("Configurações")
+    
+    # CARREGAMENTO
+    df = carregar_dados_nuvem(URL_BASE_DADOS)
 
+    # VALIDAÇÃO (Este 'if' causou o erro, ele deve estar alinhado com o 'df' acima)
+    if df is not None:
+        # Aqui dentro aumentamos o recuo de novo (8 espaços)
+        colunas_reais = df.columns.tolist()
+        # ... resto do código
+    else:
+        st.error("Planilha não encontrada")
 # ==============================================================================
 # SISTEMA DE LOGIN MULTI-USUÁRIO
 # ==============================================================================
