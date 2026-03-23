@@ -97,43 +97,48 @@ if login():
                 pesos = (ranking['Z-Score'] + 3).clip(lower=0.1).tolist()
                 
                 jogos_validos = []
+                # Aumentamos para 10.000 tentativas para dar conta dos filtros
+                tentativas_maximas = 10000 
                 tentativas = 0
                 
-                while len(jogos_validos) < qtd_jogos and tentativas < 2000:
+                progresso = st.progress(0) # Barra de progresso visual
+                
+                while len(jogos_validos) < qtd_jogos and tentativas < tentativas_maximas:
                     tentativas += 1
-                    jogo = sorted(random.choices(dezenas, weights=pesos, k=15))
-                    if len(set(jogo)) < 15: continue # Garante 15 dezenas únicas
+                    # Sorteio ponderado pelo Z-Score
+                    jogo = sorted(random.sample(dezenas, k=15)) # Mudamos para sample para evitar duplicatas internas
                     
-                    # Validação dos Filtros
+                    # Cálculos dos Filtros
                     imp = len([n for n in jogo if n % 2 != 0])
                     pri = len(set(jogo).intersection(PRIMOS))
                     mol = len(set(jogo).intersection(MOLDURA))
                     fib = len(set(jogo).intersection(FIBONACCI))
                     som = sum(jogo)
                     
+                    # Verificação rigorosa
                     if (lim_impares[0] <= imp <= lim_impares[1] and
                         lim_primos[0] <= pri <= lim_primos[1] and
                         lim_moldura[0] <= mol <= lim_moldura[1] and
                         lim_fibonacci[0] <= fib <= lim_fibonacci[1] and
                         lim_soma[0] <= som <= lim_soma[1]):
                         jogos_validos.append(jogo)
+                        progresso.progress(len(jogos_validos) / qtd_jogos)
 
                 if jogos_validos:
-                    df_jogos = pd.DataFrame(jogos_validos, columns=[f'Bola {i}' for i in range(1, 16)])
+                    st.success(f"Conseguimos gerar {len(jogos_validos)} jogos que respeitam todos os seus filtros!")
+                    df_jogos = pd.DataFrame(jogos_validos, columns=[f'B{i}' for i in range(1, 16)])
                     st.dataframe(df_jogos)
                     
-                    # Botão de Download
-                    buffer = io.BytesIO()
-                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                    # Botão de Download (Prepara o arquivo)
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         df_jogos.to_excel(writer, index=False)
                     
                     st.download_button(
                         label="📥 Baixar Jogos em Excel",
-                        data=buffer.getvalue(),
-                        file_name="palpites_lotofacil.xlsx",
+                        data=output.getvalue(),
+                        file_name="jogos_lotofacil_vip.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
                 else:
-                    st.warning("Filtros muito rigorosos! Tente aumentar os intervalos na barra lateral.")
-    else:
-        st.error("Erro ao conectar com a base de dados no GitHub.")
+                    st.error("❌ Filtros Impossíveis! O sistema tentou 10.000 combinações e nenhuma passou. Tente relaxar os limites de Soma ou Fibonacci.")
