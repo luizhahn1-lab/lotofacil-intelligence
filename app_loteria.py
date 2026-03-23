@@ -108,7 +108,7 @@ def login():
 if login():
     # Barra Lateral
     st.sidebar.success(f"Logado como: {st.session_state['user_logado']}")
-    if st.sidebar.button("Sair do Sistema"):
+    if st.sidebar.button("Sair do Sistema", key="btn_logout_sidebar"):
         st.session_state["autenticado"] = False
         st.rerun()
 
@@ -172,7 +172,7 @@ if df is not None:
         
             with c2:
              st.subheader("🎲 Gerar Palpites VIP")
-            if st.button("GERAR JOGOS AGORA"):
+            if st.button("GERAR JOGOS AGORA", key="btn_gerar_principal"):
                 # (Lógica do gerador ponderado aqui...)
                 # ... (Mesma lógica de sorteio que já validamos)
                 st.success("Jogos gerados com base no Z-Score atualizado!")
