@@ -35,20 +35,50 @@ USUARIOS_ATIVOS = {
     "cliente01": "vip2026",
     "joao_silva": "senha9988", # Novo cliente adicionado
 }
-if login():
-    # BARRA LATERAL (Note os 4 espaços de recuo aqui)
-    st.sidebar.title("Configurações")
-    
-    # CARREGAMENTO
-    df = carregar_dados_nuvem(URL_BASE_DADOS)
+# ==============================================================================
+# 1. SISTEMA DE LOGIN (Cole no topo, logo após os imports)
+# ==============================================================================
+def login():
+    if "autenticado" not in st.session_state:
+        st.session_state["autenticado"] = False
 
-    # VALIDAÇÃO (Este 'if' causou o erro, ele deve estar alinhado com o 'df' acima)
+    if not st.session_state["autenticado"]:
+        st.title("🔐 Portal VIP - Inteligência Lotofácil")
+        # Criamos o formulário para organizar os campos
+        with st.form("login_form"):
+            user = st.text_input("Usuário/E-mail")
+            senha = st.text_input("Senha", type="password")
+            submit = st.form_submit_button("Acessar Painel")
+            
+            if submit:
+                # Verifica se o usuário existe no seu dicionário USUARIOS_ATIVOS
+                if user in USUARIOS_ATIVOS and USUARIOS_ATIVOS[user] == senha:
+                    st.session_state["autenticado"] = True
+                    st.session_state["user_logado"] = user
+                    st.rerun()
+                else:
+                    st.error("Usuário ou senha inválidos.")
+        return False
+    return True
+
+# ==============================================================================
+# 2. EXECUÇÃO DO SISTEMA (Onde o erro estava apontando)
+# ==============================================================================
+if login():
+    # TUDO DAQUI PARA BAIXO PRECISA DE 4 ESPAÇOS (1 TAB) DE RECUO
+    st.sidebar.success(f"Logado: {st.session_state['user_logado']}")
+    
+    if st.sidebar.button("Sair do Sistema"):
+        st.session_state["autenticado"] = False
+        st.rerun()
+
+    # Chame sua função de carregar dados aqui
+    df = carregar_dados_nuvem(URL_BASE_DADOS)
+    
     if df is not None:
-        # Aqui dentro aumentamos o recuo de novo (8 espaços)
-        colunas_reais = df.columns.tolist()
-        # ... resto do código
-    else:
-        st.error("Planilha não encontrada")
+        # TUDO DAQUI PARA BAIXO PRECISA DE 8 ESPAÇOS (2 TABS) DE RECUO
+        st.write("Conectado à base de dados com sucesso!")
+        # ... restante do seu código de filtros e gráficos
 # ==============================================================================
 # SISTEMA DE LOGIN MULTI-USUÁRIO
 # ==============================================================================
