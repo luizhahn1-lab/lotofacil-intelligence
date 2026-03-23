@@ -11,7 +11,7 @@ st.set_page_config(page_title="Loteria Intelligence SaaS", layout="wide", page_i
 
 # --- LINK DO SEU ARQUIVO NO GITHUB ---
 # Substitua pelo link 'RAW' do seu arquivo Excel no GitHub
-URL_BASE_DADOS = "https://github.com/luizhahn1-lab/lotofacil-intelligence/blob/8ff657820a830c84fdf6b6f5d641885eb1e8b296/Resultados.xlsx"
+URL_BASE_DADOS = "https://raw.githubusercontent.com/lotofacil-intelligence/main/Resultados.xlsx"
 
 # --- BANCO DE DADOS DE CLIENTES (Para começar a vender) ---
 USUARIOS_ATIVOS = {
