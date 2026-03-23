@@ -84,7 +84,7 @@ if login():
     if df is not None:
         # Informações de Atualização
         ultimo_concurso = df.iloc[-1]['Concurso'] # Supondo que a coluna chama 'Concurso'
-        data_sorteio = df.iloc[-1]['Data']       # Supondo que a coluna chama 'Data'
+        data_sorteio = df.iloc[-1]['Data Sorteio']       # Supondo que a coluna chama 'Data'
         
         st.title("🎯 Painel de Análise Preditiva")
         st.sidebar.markdown(f"---")
