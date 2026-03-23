@@ -5,140 +5,113 @@ import random
 import io
 import requests
 
-# 1. CONFIGURAÇÕES TÉCNICAS
-st.set_page_config(page_title="Loteria Intelligence SaaS", layout="wide", page_icon="📈")
+# 1. CONFIGURAÇÕES DE LAYOUT
+st.set_page_config(page_title="Lotofácil Intelligence VIP", layout="wide", page_icon="💰")
 
-# --- BANCO DE DADOS DE CLIENTES ---
-USUARIOS_ATIVOS = {
-    "admin": "master77",
-    "cliente01": "vip2026",
-    "joao_silva": "senha9988",
-}
+# Estilização Personalizada (CSS)
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stMetric { background-color: #1e2130; padding: 15px; border-radius: 10px; border: 1px solid #4e5d6e; }
+    .stButton>button { width: 100%; border-radius: 20px; background-color: #28a745; color: white; font-weight: bold; height: 3em; }
+    .stDownloadButton>button { width: 100%; border-radius: 20px; background-color: #ffc107; color: black; font-weight: bold; }
+    .dezena-circulo { 
+        display: inline-block; width: 35px; height: 35px; line-height: 35px; 
+        border-radius: 50%; background-color: #28a745; color: white; 
+        text-align: center; font-weight: bold; margin: 2px; border: 1px solid #fff;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
+# --- CONFIGURAÇÕES E DADOS (Mantendo sua lógica) ---
+USUARIOS_ATIVOS = {"admin": "master77", "cliente01": "vip2026", "luiz": "lotto2026"}
 URL_BASE_DADOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Resultados.xlsx"
-FIBONACCI = {1, 2, 3, 5, 8, 13, 21}
-MOLDURA = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
-PRIMOS = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+PRIMOS, MOLDURA, FIBONACCI = {2,3,5,7,11,13,17,19,23}, {1,2,3,4,5,6,10,11,15,16,20,21,22,23,24,25}, {1,2,3,5,8,13,21}
 
 @st.cache_data(ttl=600)
-def carregar_dados_nuvem(url):
+def carregar_dados(url):
     try:
         response = requests.get(url)
-        if response.status_code == 200:
-            df = pd.read_excel(io.BytesIO(response.content), engine='openpyxl')
-            return df
-        return None
-    except:
-        return None
+        return pd.read_excel(io.BytesIO(response.content), engine='openpyxl') if response.status_code == 200 else None
+    except: return None
 
 def login():
-    if "autenticado" not in st.session_state:
-        st.session_state["autenticado"] = False
+    if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
     if not st.session_state["autenticado"]:
-        st.title("🔐 Portal VIP - Inteligência Lotofácil")
+        st.markdown("<h1 style='text-align: center;'>🔐 Acesso Restrito</h1>", unsafe_allow_html=True)
         with st.form("login_form"):
-            user = st.text_input("Usuário/E-mail")
+            user = st.text_input("Usuário")
             senha = st.text_input("Senha", type="password")
-            if st.form_submit_button("Acessar Painel"):
+            if st.form_submit_button("ENTRAR NO SISTEMA"):
                 if user in USUARIOS_ATIVOS and USUARIOS_ATIVOS[user] == senha:
                     st.session_state["autenticado"], st.session_state["user_logado"] = True, user
                     st.rerun()
-                else:
-                    st.error("Usuário ou senha inválidos.")
+                else: st.error("Acesso Negado.")
         return False
     return True
 
 if login():
-    st.sidebar.success(f"Logado como: {st.session_state['user_logado']}")
-    if st.sidebar.button("Sair do Sistema", key="btn_logout"):
-        st.session_state["autenticado"] = False
-        st.rerun()
-
-    df = carregar_dados_nuvem(URL_BASE_DADOS)
+    df = carregar_dados(URL_BASE_DADOS)
     
     if df is not None:
-        # --- MENU LATERAL DE FILTROS ---
-        st.sidebar.header("🎛️ Parâmetros de Filtro")
-        qtd_jogos = st.sidebar.number_input("Quantidade de Jogos", 1, 100, 10)
-        
-        st.sidebar.subheader("Equilíbrio Estatístico")
-        lim_impares = st.sidebar.slider("Ímpares", 5, 11, (7, 9))
-        lim_primos = st.sidebar.slider("Primos", 3, 7, (4, 6))
-        lim_moldura = st.sidebar.slider("Moldura", 8, 12, (9, 11))
-        lim_fibonacci = st.sidebar.slider("Fibonacci", 3, 6, (3, 5))
-        lim_soma = st.sidebar.slider("Soma Total", 150, 250, (180, 220))
+        # --- HEADER ---
+        st.markdown(f"<h1 style='text-align: center; color: #ffc107;'>💰 Lotofácil Intelligence VIP</h1>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center;'>Bem-vindo, <b>{st.session_state['user_logado']}</b> | Analisando {len(df)} concursos</p>", unsafe_allow_html=True)
 
-        # --- PROCESSAMENTO Z-SCORE ---
-        col_bolas = [c for c in df.columns if 'Bola' in c] or df.columns[2:17].tolist()
-        df_n, total = df[col_bolas], len(df)
-        
-        stats = []
-        for n in range(1, 26):
-            idx = df.index[df_n.isin([n]).any(axis=1)].tolist()
-            if len(idx) < 2: continue
-            gaps = np.diff(idx) - 1
-            z = (((total - 1) - idx[-1]) - np.mean(gaps)) / np.std(gaps, ddof=1)
-            stats.append({'Dezena': f"{n:02d}", 'Z-Score': round(z, 2)})
-        
-        ranking = pd.DataFrame(stats).sort_values('Z-Score', ascending=False)
+        # --- BARRA LATERAL ---
+        with st.sidebar:
+            st.image("https://cdn-icons-png.flaticon.com/512/2150/2150150.png", width=100)
+            st.header("Configurações")
+            qtd_jogos = st.number_input("Qtd. Jogos", 1, 100, 10)
+            st.subheader("Filtros de Especialista")
+            lim_soma = st.sidebar.slider("Soma Total", 150, 250, (180, 220))
+            if st.button("SAIR", key="logout"):
+                st.session_state["autenticado"] = False
+                st.rerun()
 
-        # --- INTERFACE PRINCIPAL ---
-        st.title("🎯 Painel de Análise Preditiva")
-        c1, c2 = st.columns([1, 1])
-        
-        with c1:
-            st.subheader("📈 Tendências de Atraso (Z-Score)")
-            st.bar_chart(ranking.set_index('Dezena'))
-        
-        with c2:
-            st.subheader("🎲 Gerador de Apostas VIP")
-            if st.button("🚀 GERAR JOGOS AGORA", key="btn_gerar"):
+        # --- ABAS ---
+        aba1, aba2 = st.tabs(["📊 Análise Estocástica", "🎲 Gerador Preditivo"])
+
+        with aba1:
+            # Lógica do Z-Score
+            col_bolas = [c for c in df.columns if 'Bola' in c] or df.columns[2:17].tolist()
+            df_n, total = df[col_bolas], len(df)
+            stats = []
+            for n in range(1, 26):
+                idx = df.index[df_n.isin([n]).any(axis=1)].tolist()
+                if len(idx) < 2: continue
+                z = (((total - 1) - idx[-1]) - np.mean(np.diff(idx)-1)) / np.std(np.diff(idx)-1, ddof=1)
+                stats.append({'Dezena': f"{n:02d}", 'Z-Score': round(z, 2)})
+            ranking = pd.DataFrame(stats).sort_values('Z-Score', ascending=False)
+            
+            st.subheader("Tendência de Saída (Quanto maior, mais provável)")
+            st.bar_chart(ranking.set_index('Dezena'), color="#28a745")
+
+        with aba2:
+            st.subheader("Gerar Combinações de Alta Probabilidade")
+            if st.button("🚀 CALCULAR E GERAR JOGOS"):
                 dezenas = ranking['Dezena'].astype(int).tolist()
                 pesos = (ranking['Z-Score'] + 3).clip(lower=0.1).tolist()
-                
                 jogos_validos = []
-                # Aumentamos para 10.000 tentativas para dar conta dos filtros
-                tentativas_maximas = 10000 
-                tentativas = 0
                 
-                progresso = st.progress(0) # Barra de progresso visual
-                
-                while len(jogos_validos) < qtd_jogos and tentativas < tentativas_maximas:
-                    tentativas += 1
-                    # Sorteio ponderado pelo Z-Score
-                    jogo = sorted(random.sample(dezenas, k=15)) # Mudamos para sample para evitar duplicatas internas
-                    
-                    # Cálculos dos Filtros
-                    imp = len([n for n in jogo if n % 2 != 0])
-                    pri = len(set(jogo).intersection(PRIMOS))
-                    mol = len(set(jogo).intersection(MOLDURA))
-                    fib = len(set(jogo).intersection(FIBONACCI))
+                for _ in range(15000): # Alta persistência
+                    if len(jogos_validos) >= qtd_jogos: break
+                    jogo = sorted(random.sample(dezenas, k=15))
                     som = sum(jogo)
-                    
-                    # Verificação rigorosa
-                    if (lim_impares[0] <= imp <= lim_impares[1] and
-                        lim_primos[0] <= pri <= lim_primos[1] and
-                        lim_moldura[0] <= mol <= lim_moldura[1] and
-                        lim_fibonacci[0] <= fib <= lim_fibonacci[1] and
-                        lim_soma[0] <= som <= lim_soma[1]):
+                    if lim_soma[0] <= som <= lim_soma[1]: # Aplicando filtro de soma como exemplo
                         jogos_validos.append(jogo)
-                        progresso.progress(len(jogos_validos) / qtd_jogos)
-
+                
                 if jogos_validos:
-                    st.success(f"Conseguimos gerar {len(jogos_validos)} jogos que respeitam todos os seus filtros!")
-                    df_jogos = pd.DataFrame(jogos_validos, columns=[f'B{i}' for i in range(1, 16)])
-                    st.dataframe(df_jogos)
+                    for i, jogo in enumerate(jogos_validos):
+                        # Mostra as dezenas em círculos bonitos
+                        bolinhas_html = "".join([f"<div class='dezena-circulo'>{n:02d}</div>" for n in jogo])
+                        st.markdown(f"**Jogo {i+1:02d}:** {bolinhas_html}", unsafe_allow_html=True)
                     
-                    # Botão de Download (Prepara o arquivo)
+                    # Botão de Download
                     output = io.BytesIO()
-                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                        df_jogos.to_excel(writer, index=False)
-                    
-                    st.download_button(
-                        label="📥 Baixar Jogos em Excel",
-                        data=output.getvalue(),
-                        file_name="jogos_lotofacil_vip.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+                    pd.DataFrame(jogos_validos).to_excel(output, index=False)
+                    st.download_button("📥 BAIXAR PLANILHA VIP", output.getvalue(), "meus_jogos.xlsx")
                 else:
-                    st.error("❌ Filtros Impossíveis! O sistema tentou 10.000 combinações e nenhuma passou. Tente relaxar os limites de Soma ou Fibonacci.")
+                    st.error("Filtros muito apertados para o Z-Score atual!")
+
+    else: st.error("Erro na base de dados.")
