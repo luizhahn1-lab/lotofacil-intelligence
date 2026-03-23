@@ -112,40 +112,40 @@ if df is not None:
        st.sidebar.write(f"📊 **Última Atualização:**")
        st.sidebar.info(f"Concurso: {ultimo_concurso}\nData: {data_sorteio}")
 
-        # --- FILTROS ---
-        st.sidebar.subheader("🎛️ Filtros de Equilíbrio")
-        qtd_jogos = st.sidebar.number_input("Quantidade de Jogos", 1, 50, 5)
-        lim_impares = st.sidebar.slider("Ímpares", 5, 11, (7, 9))
-        lim_primos = st.sidebar.slider("Primos", 3, 7, (4, 6))
-        lim_moldura = st.sidebar.slider("Moldura", 8, 12, (9, 11))
+    # --- FILTROS ---
+       st.sidebar.subheader("🎛️ Filtros de Equilíbrio")
+       qtd_jogos = st.sidebar.number_input("Quantidade de Jogos", 1, 50, 5)
+       lim_impares = st.sidebar.slider("Ímpares", 5, 11, (7, 9))
+       lim_primos = st.sidebar.slider("Primos", 3, 7, (4, 6))
+       lim_moldura = st.sidebar.slider("Moldura", 8, 12, (9, 11))
 
         # --- LÓGICA DE CÁLCULO (Z-SCORE) ---
-        col_bolas = [c for c in df.columns if 'Bola' in c]
-        df_n = df[col_bolas]
-        total = len(df)
+       col_bolas = [c for c in df.columns if 'Bola' in c]
+       df_n = df[col_bolas]
+       total = len(df)
         
-        stats = []
-        for n in range(1, 26):
+       stats = []
+       for n in range(1, 26):
             idx = df.index[df_n.isin([n]).any(axis=1)].tolist()
             if len(idx) < 2: continue
             gaps = np.diff(idx) - 1
             z = (((total - 1) - idx[-1]) - np.mean(gaps)) / np.std(gaps, ddof=1)
             stats.append({'Dezena': f"{n:02d}", 'Z-Score': round(z, 2)})
         
-        ranking = pd.DataFrame(stats).sort_values('Z-Score', ascending=False)
+            ranking = pd.DataFrame(stats).sort_values('Z-Score', ascending=False)
 
         # Exibição
-        c1, c2 = st.columns([1, 1])
-        with c1:
-            st.subheader("📈 Tendências de Atraso")
+            c1, c2 = st.columns([1, 1])
+            with c1:
+             st.subheader("📈 Tendências de Atraso")
             st.bar_chart(ranking.set_index('Dezena'))
         
-        with c2:
-            st.subheader("🎲 Gerar Palpites VIP")
+            with c2:
+             st.subheader("🎲 Gerar Palpites VIP")
             if st.button("GERAR JOGOS AGORA"):
                 # (Lógica do gerador ponderado aqui...)
                 # ... (Mesma lógica de sorteio que já validamos)
                 st.success("Jogos gerados com base no Z-Score atualizado!")
                 # Aqui você exibe os jogos e o botão de download
-    else:
-        st.error("Erro ao conectar com a base de dados no GitHub. Verifique o link.")
+            else:
+             st.error("Erro ao conectar com a base de dados no GitHub. Verifique o link.")
