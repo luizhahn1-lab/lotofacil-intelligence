@@ -2,127 +2,118 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import random
-from scipy.stats import poisson
 import io
+from scipy.stats import poisson
 
-# Configurações Visuais do Site
+# 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="Loteria Intelligence Pro", layout="wide", page_icon="💰")
 
-st.title("🎯 Sistema de Inteligência Lotofácil")
-st.markdown("---")
+# ==============================================================================
+# SISTEMA DE LOGIN
+# ==============================================================================
+def check_password():
+    def password_entered():
+        if st.session_state["password"] == "suasenha123": # <--- MUDE SUA SENHA AQUI
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]
+        else:
+            st.session_state["password_correct"] = False
 
-# --- BARRA LATERAL (SIDEBAR) ---
-st.sidebar.header("📂 Configurações de Dados")
-arquivo_upload = st.sidebar.file_uploader("Suba o arquivo Resultados.xlsx", type=["xlsx"])
+    if "password_correct" not in st.session_state:
+        st.title("🔐 Acesso Restrito")
+        st.text_input("Digite a senha para acessar o portal:", type="password", on_change=password_entered, key="password")
+        return False
+    elif not st.session_state["password_correct"]:
+        st.text_input("Senha incorreta. Tente novamente:", type="password", on_change=password_entered, key="password")
+        st.error("😕 Senha inválida.")
+        return False
+    else:
+        return True
 
-st.sidebar.subheader("🎛️ Ajuste dos Filtros")
-qtd_jogos = st.sidebar.number_input("Quantos jogos deseja gerar?", min_value=1, max_value=100, value=10)
-
-# Novos Sliders Dinâmicos
-lim_impares = st.sidebar.slider("Quantidade de Ímpares", 5, 11, (7, 9))
-lim_moldura = st.sidebar.slider("Quantidade na Moldura", 8, 12, (9, 11))
-lim_primos = st.sidebar.slider("Quantidade de Primos", 3, 7, (4, 6)) # <--- NOVO FILTRO
-lim_soma = st.sidebar.slider("Faixa de Soma Total", 160, 240, (180, 220))
-
-# Definição dos Grupos de Números
-MOLDURA = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
-PRIMOS = {2, 3, 5, 7, 11, 13, 17, 19, 23}
-
-# Função Mestra de Validação (O Funil)
-def validar_jogo(jogo):
-    impares = len([n for n in jogo if n % 2 != 0])
-    moldura = len(set(jogo).intersection(MOLDURA))
-    primos = len(set(jogo).intersection(PRIMOS))
-    soma = sum(jogo)
+# ==============================================================================
+# EXECUÇÃO DO SISTEMA (SÓ SE LOGADO)
+# ==============================================================================
+if check_password():
     
-    # Verifica se o jogo atende a TODOS os critérios selecionados na lateral
-    check = (
-        lim_impares[0] <= impares <= lim_impares[1] and 
-        lim_moldura[0] <= moldura <= lim_moldura[1] and 
-        lim_primos[0] <= primos <= lim_primos[1] and
-        lim_soma[0] <= soma <= lim_soma[1]
-    )
-    return check
+    # Botão de Logout na lateral
+    if st.sidebar.button("Sair/Logoff"):
+        st.session_state["password_correct"] = False
+        st.rerun()
 
-# --- CORPO DO SISTEMA ---
-if arquivo_upload:
-    # Processamento dos Dados
-    df = pd.read_excel(arquivo_upload)
-    colunas_bolas = [col for col in df.columns if 'Bola' in col]
-    df_num = df[colunas_bolas]
-    total_concursos = len(df)
+    st.title("🎯 Gerador Lotofácil Intelligence")
+    st.markdown("---")
+
+    # --- CONFIGURAÇÕES LATERAIS ---
+    st.sidebar.header("📂 Entrada de Dados")
+    arquivo_upload = st.sidebar.file_uploader("Suba a planilha Resultados.xlsx", type=["xlsx"])
     
-    # Cálculo de Inteligência (Z-Score)
-    estatisticas = []
-    for n in range(1, 26):
-        indices = df.index[df_num.isin([n]).any(axis=1)].tolist()
-        if len(indices) < 2: continue
-        gaps = np.diff(indices) - 1
-        media_gaps = np.mean(gaps)
-        desvio_gaps = np.std(gaps, ddof=1)
-        atraso_atual = (total_concursos - 1) - indices[-1]
+    st.sidebar.subheader("🎛️ Filtros de Equilíbrio")
+    qtd_jogos = st.sidebar.number_input("Qtd Jogos", 1, 100, 10)
+    lim_impares = st.sidebar.slider("Ímpares", 5, 11, (7, 9))
+    lim_primos = st.sidebar.slider("Primos", 3, 7, (4, 6))
+    lim_moldura = st.sidebar.slider("Moldura", 8, 12, (9, 11))
+    lim_soma = st.sidebar.slider("Soma", 160, 240, (180, 220))
+
+    MOLDURA = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
+    PRIMOS = {2, 3, 5, 7, 11, 13, 17, 19, 23}
+
+    def validar(jogo):
+        impares = len([n for n in jogo if n % 2 != 0])
+        mold = len(set(jogo).intersection(MOLDURA))
+        prim = len(set(jogo).intersection(PRIMOS))
+        soma = sum(jogo)
+        return (lim_impares[0] <= impares <= lim_impares[1] and 
+                lim_moldura[0] <= mold <= lim_moldura[1] and 
+                lim_primos[0] <= prim <= lim_primos[1] and
+                lim_soma[0] <= soma <= lim_soma[1])
+
+    if arquivo_upload:
+        # Processamento
+        df = pd.read_excel(arquivo_upload)
+        col_bolas = [c for c in df.columns if 'Bola' in c]
+        df_n = df[col_bolas]
+        total = len(df)
         
-        z_score = (atraso_atual - media_gaps) / desvio_gaps if desvio_gaps > 0 else 0
-        estatisticas.append({'Dezena': f"{n:02d}", 'Z-Score': round(z_score, 2)})
-    
-    df_ranking = pd.DataFrame(estatisticas).sort_values('Z-Score', ascending=False)
+        # Inteligência
+        stats = []
+        for n in range(1, 26):
+            idx = df.index[df_n.isin([n]).any(axis=1)].tolist()
+            if len(idx) < 2: continue
+            gaps = np.diff(idx) - 1
+            z = (((total - 1) - idx[-1]) - np.mean(gaps)) / np.std(gaps, ddof=1)
+            stats.append({'Dezena': f"{n:02d}", 'Z-Score': round(z, 2)})
+        
+        ranking = pd.DataFrame(stats).sort_values('Z-Score', ascending=False)
 
-    # Layout em Colunas
-    col_dash, col_gerador = st.columns([1, 1])
+        col_left, col_right = st.columns([1, 1])
 
-    with col_dash:
-        st.subheader("📊 Gráfico de Tendências")
-        st.bar_chart(df_ranking.set_index('Dezena'))
-        st.write("O **Z-Score** mostra o quanto uma dezena está 'atrasada' em relação à média dela. Valores altos (acima de 2.0) são fortes candidatas.")
+        with col_left:
+            st.subheader("📊 Tendência (Z-Score)")
+            st.bar_chart(ranking.set_index('Dezena'))
 
-    with col_gerador:
-        st.subheader("🎲 Gerador de Apostas")
-        if st.button("🚀 GERAR JOGOS COM FILTROS"):
-            # Preparação do Sorteio Ponderado
-            dezenas_lista = df_ranking['Dezena'].astype(int).tolist()
-            # Damos um peso base de 3 para todos, somado ao Z-Score para priorizar atrasados
-            pesos_lista = (df_ranking['Z-Score'] + 3).clip(lower=0.1).tolist()
-            
-            jogos_aprovados = []
-            tentativas_seguranca = 0
-            
-            while len(jogos_aprovados) < qtd_jogos and tentativas_seguranca < 20000:
-                tentativas_seguranca += 1
+        with col_right:
+            st.subheader("🎲 Gerar Apostas")
+            if st.button("🚀 GERAR JOGOS"):
+                dezenas = ranking['Dezena'].astype(int).tolist()
+                pesos = (ranking['Z-Score'] + 3).clip(lower=0.1).tolist()
                 
-                # Sorteio ponderado
-                pool = random.choices(dezenas_lista, weights=pesos_lista, k=40)
-                sorteio_unico = sorted(list(set(pool)))[:15]
+                final_jogos = []
+                while len(final_jogos) < qtd_jogos:
+                    res = []
+                    while len(res) < 15:
+                        sorteado = random.choices(dezenas, weights=pesos, k=1)[0]
+                        if sorteado not in res: res.append(sorteado)
+                    res.sort()
+                    if validar(res): final_jogos.append(res)
                 
-                # Se o sorteio não deu 15 números (por causa do set), completa
-                while len(sorteio_unico) < 15:
-                    extra = random.choice(dezenas_lista)
-                    if extra not in sorteio_unico:
-                        sorteio_unico.append(extra)
-                sorteio_unico.sort()
-                
-                # Validação no Funil
-                if validar_jogo(sorteio_unico):
-                    jogos_aprovados.append(sorteio_unico)
-            
-            # Exibição dos resultados
-            if jogos_aprovados:
-                for i, jogo in enumerate(jogos_aprovados, 1):
-                    st.success(f"Jogo {i:02d}: {jogo}")
-                
-                # Botão de Exportação para Excel
-                df_export = pd.DataFrame(jogos_aprovados)
+                for i, j in enumerate(final_jogos, 1):
+                    st.success(f"Jogo {i:02d}: {j}")
+
+                # Exportar
+                df_ex = pd.DataFrame(final_jogos)
                 buffer = io.BytesIO()
-                with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                    df_export.to_excel(writer, index=False, header=False)
-                
-                st.download_button(
-                    label="📥 Baixar Jogos Gerados (Excel)",
-                    data=buffer.getvalue(),
-                    file_name="jogos_inteligentes.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-            else:
-                st.error("Não foi possível gerar jogos com esses filtros. Tente abrir mais as margens!")
-
-else:
-    st.info("👈 Por favor, carregue sua planilha 'Resultados.xlsx' na barra lateral para começar a análise.")
+                with pd.ExcelWriter(buffer, engine='openpyxl') as wr:
+                    df_ex.to_excel(wr, index=False, header=False)
+                st.download_button("📥 Baixar em Excel", buffer.getvalue(), "jogos.xlsx")
+    else:
+        st.info("👋 Suba sua planilha na lateral para começar!")
