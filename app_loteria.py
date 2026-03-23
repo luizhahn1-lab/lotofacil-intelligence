@@ -15,8 +15,10 @@ USUARIOS_ATIVOS = {
     "joao_silva": "senha9988",
 }
 
-# --- LINK DO SEU ARQUIVO NO GITHUB ---
 URL_BASE_DADOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Resultados.xlsx"
+FIBONACCI = {1, 2, 3, 5, 8, 13, 21}
+MOLDURA = {1, 2, 3, 4, 5, 6, 10, 11, 15, 16, 20, 21, 22, 23, 24, 25}
+PRIMOS = {2, 3, 5, 7, 11, 13, 17, 19, 23}
 
 @st.cache_data(ttl=600)
 def carregar_dados_nuvem(url):
@@ -25,76 +27,50 @@ def carregar_dados_nuvem(url):
         if response.status_code == 200:
             df = pd.read_excel(io.BytesIO(response.content), engine='openpyxl')
             return df
-        else:
-            return None
+        return None
     except:
         return None
 
-# ==============================================================================
-# SISTEMA DE LOGIN
-# ==============================================================================
 def login():
     if "autenticado" not in st.session_state:
         st.session_state["autenticado"] = False
-
     if not st.session_state["autenticado"]:
         st.title("🔐 Portal VIP - Inteligência Lotofácil")
         with st.form("login_form"):
             user = st.text_input("Usuário/E-mail")
             senha = st.text_input("Senha", type="password")
-            submit = st.form_submit_button("Acessar Painel")
-            
-            if submit:
+            if st.form_submit_button("Acessar Painel"):
                 if user in USUARIOS_ATIVOS and USUARIOS_ATIVOS[user] == senha:
-                    st.session_state["autenticado"] = True
-                    st.session_state["user_logado"] = user
+                    st.session_state["autenticado"], st.session_state["user_logado"] = True, user
                     st.rerun()
                 else:
                     st.error("Usuário ou senha inválidos.")
         return False
     return True
 
-# ==============================================================================
-# INTERFACE PRINCIPAL (SÓ RODA SE LOGADO)
-# ==============================================================================
 if login():
-    # BARRA LATERAL
     st.sidebar.success(f"Logado como: {st.session_state['user_logado']}")
-    if st.sidebar.button("Sair do Sistema", key="btn_logout_sidebar"):
+    if st.sidebar.button("Sair do Sistema", key="btn_logout"):
         st.session_state["autenticado"] = False
         st.rerun()
 
-    # CARREGAMENTO DOS DADOS
     df = carregar_dados_nuvem(URL_BASE_DADOS)
     
     if df is not None:
-        # 🔍 ORGANIZAÇÃO DE COLUNAS
-        colunas_reais = df.columns.tolist()
-        col_concurso = 'Concurso' if 'Concurso' in colunas_reais else colunas_reais[0]
-        col_data = 'Data' if 'Data' in colunas_reais else colunas_reais[1]
-
-        ultimo_concurso = df.iloc[-1][col_concurso]
-        data_sorteio = df.iloc[-1][col_data]
-    
-        st.title("🎯 Painel de Análise Preditiva")
-        st.sidebar.markdown(f"---")
-        st.sidebar.write(f"📊 **Última Atualização:**")
-        st.sidebar.info(f"Concurso: {ultimo_concurso}\nData: {data_sorteio}")
-
-        # --- FILTROS ---
-        st.sidebar.subheader("🎛️ Filtros de Equilíbrio")
-        qtd_jogos = st.sidebar.number_input("Quantidade de Jogos", 1, 50, 5)
+        # --- MENU LATERAL DE FILTROS ---
+        st.sidebar.header("🎛️ Parâmetros de Filtro")
+        qtd_jogos = st.sidebar.number_input("Quantidade de Jogos", 1, 100, 10)
+        
+        st.sidebar.subheader("Equilíbrio Estatístico")
         lim_impares = st.sidebar.slider("Ímpares", 5, 11, (7, 9))
         lim_primos = st.sidebar.slider("Primos", 3, 7, (4, 6))
         lim_moldura = st.sidebar.slider("Moldura", 8, 12, (9, 11))
+        lim_fibonacci = st.sidebar.slider("Fibonacci", 3, 6, (3, 5))
+        lim_soma = st.sidebar.slider("Soma Total", 150, 250, (180, 220))
 
-        # --- LÓGICA DE CÁLCULO (Z-SCORE) ---
-        col_bolas = [c for c in df.columns if 'Bola' in c]
-        if not col_bolas: # Caso as colunas não tenham 'Bola' no nome
-             col_bolas = df.columns[2:17].tolist()
-
-        df_n = df[col_bolas]
-        total = len(df)
+        # --- PROCESSAMENTO Z-SCORE ---
+        col_bolas = [c for c in df.columns if 'Bola' in c] or df.columns[2:17].tolist()
+        df_n, total = df[col_bolas], len(df)
         
         stats = []
         for n in range(1, 26):
@@ -106,22 +82,58 @@ if login():
         
         ranking = pd.DataFrame(stats).sort_values('Z-Score', ascending=False)
 
-        # --- EXIBIÇÃO DOS RESULTADOS ---
+        # --- INTERFACE PRINCIPAL ---
+        st.title("🎯 Painel de Análise Preditiva")
         c1, c2 = st.columns([1, 1])
         
         with c1:
-            st.subheader("📈 Tendências de Atraso")
+            st.subheader("📈 Tendências de Atraso (Z-Score)")
             st.bar_chart(ranking.set_index('Dezena'))
         
         with c2:
-            st.subheader("🎲 Gerar Palpites VIP")
-            if st.button("GERAR JOGOS AGORA", key="btn_gerar_principal"):
-                # Lógica simplificada de sorteio para teste
+            st.subheader("🎲 Gerador de Apostas VIP")
+            if st.button("🚀 GERAR JOGOS AGORA", key="btn_gerar"):
                 dezenas = ranking['Dezena'].astype(int).tolist()
                 pesos = (ranking['Z-Score'] + 3).clip(lower=0.1).tolist()
                 
-                res = sorted(random.choices(dezenas, weights=pesos, k=15))
-                st.success(f"Sugestão de Jogo: {res}")
-                st.info("Filtros aplicados com sucesso!")
+                jogos_validos = []
+                tentativas = 0
+                
+                while len(jogos_validos) < qtd_jogos and tentativas < 2000:
+                    tentativas += 1
+                    jogo = sorted(random.choices(dezenas, weights=pesos, k=15))
+                    if len(set(jogo)) < 15: continue # Garante 15 dezenas únicas
+                    
+                    # Validação dos Filtros
+                    imp = len([n for n in jogo if n % 2 != 0])
+                    pri = len(set(jogo).intersection(PRIMOS))
+                    mol = len(set(jogo).intersection(MOLDURA))
+                    fib = len(set(jogo).intersection(FIBONACCI))
+                    som = sum(jogo)
+                    
+                    if (lim_impares[0] <= imp <= lim_impares[1] and
+                        lim_primos[0] <= pri <= lim_primos[1] and
+                        lim_moldura[0] <= mol <= lim_moldura[1] and
+                        lim_fibonacci[0] <= fib <= lim_fibonacci[1] and
+                        lim_soma[0] <= som <= lim_soma[1]):
+                        jogos_validos.append(jogo)
+
+                if jogos_validos:
+                    df_jogos = pd.DataFrame(jogos_validos, columns=[f'Bola {i}' for i in range(1, 16)])
+                    st.dataframe(df_jogos)
+                    
+                    # Botão de Download
+                    buffer = io.BytesIO()
+                    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                        df_jogos.to_excel(writer, index=False)
+                    
+                    st.download_button(
+                        label="📥 Baixar Jogos em Excel",
+                        data=buffer.getvalue(),
+                        file_name="palpites_lotofacil.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                else:
+                    st.warning("Filtros muito rigorosos! Tente aumentar os intervalos na barra lateral.")
     else:
-        st.error("Erro ao conectar com a base de dados no GitHub. Verifique se o arquivo Resultados.xlsx está no seu repositório.")
+        st.error("Erro ao conectar com a base de dados no GitHub.")
