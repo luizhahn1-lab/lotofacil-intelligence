@@ -27,7 +27,7 @@ def carregar_dados_nuvem(url):
         return None
 
 # Use o link que você copiou no passo 2 aqui:
-URL_BASE_DADOS = "https://raw.githubusercontent.com/lotofacil-intelligence/main/Resultados.xlsx"
+URL_BASE_DADOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Resultados.xlsx"
 df = carregar_dados_nuvem(URL_BASE_DADOS)
 
 # --- BANCO DE DADOS DE CLIENTES (Para começar a vender) ---
