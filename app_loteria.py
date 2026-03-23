@@ -10,8 +10,25 @@ import requests
 st.set_page_config(page_title="Loteria Intelligence SaaS", layout="wide", page_icon="📈")
 
 # --- LINK DO SEU ARQUIVO NO GITHUB ---
-# Substitua pelo link 'RAW' do seu arquivo Excel no GitHub
+@st.cache_data(ttl=600) # Atualiza a cada 10 minutos
+def carregar_dados_nuvem(url):
+    try:
+        response = requests.get(url)
+        # Verifica se o link está funcionando (status 200 é OK)
+        if response.status_code == 200:
+            # Transforma os dados baixados em um formato que o Pandas entende
+            df = pd.read_excel(io.BytesIO(response.content))
+            return df
+        else:
+            st.error(f"Erro ao acessar o GitHub: Status {response.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Erro técnico: {e}")
+        return None
+
+# Use o link que você copiou no passo 2 aqui:
 URL_BASE_DADOS = "https://raw.githubusercontent.com/lotofacil-intelligence/main/Resultados.xlsx"
+df = carregar_dados_nuvem(URL_BASE_DADOS)
 
 # --- BANCO DE DADOS DE CLIENTES (Para começar a vender) ---
 USUARIOS_ATIVOS = {
