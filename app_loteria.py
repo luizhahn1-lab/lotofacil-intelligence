@@ -80,7 +80,7 @@ if login():
             return None
 
     df = carregar_dados_nuvem(URL_BASE_DADOS)
-
+    
    if df is not None:
     # 🔍 TRUQUE PARA NÃO DAR ERRO DE NOME:
     # Vamos pegar os nomes das colunas que existem de verdade no seu arquivo
