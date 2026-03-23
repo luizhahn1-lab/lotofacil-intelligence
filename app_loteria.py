@@ -112,8 +112,8 @@ if df is not None:
        st.sidebar.write(f"📊 **Última Atualização:**")
        st.sidebar.info(f"Concurso: {ultimo_concurso}\nData: {data_sorteio}")
 
-        # --- FILTROS ---
-        st.sidebar.subheader("🎛️ Filtros de Equilíbrio")
+    # --- FILTROS ---
+    st.sidebar.subheader("🎛️ Filtros de Equilíbrio")
         qtd_jogos = st.sidebar.number_input("Quantidade de Jogos", 1, 50, 5)
         lim_impares = st.sidebar.slider("Ímpares", 5, 11, (7, 9))
         lim_primos = st.sidebar.slider("Primos", 3, 7, (4, 6))
