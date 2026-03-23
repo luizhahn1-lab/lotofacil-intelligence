@@ -82,22 +82,14 @@ if login():
     df = carregar_dados_nuvem(URL_BASE_DADOS)
 
     if df is not None:
-      # 🔍 TRUQUE PARA NÃO DAR ERRO DE NOME:
-      # Vamos pegar os nomes das colunas que existem de verdade no seu arquivo
-      colunas_reais = df.columns.tolist()
-    
-      # Tenta encontrar a coluna de Concurso e Data, independente do nome
-      # Se não achar pelo nome, pega a primeira e a segunda coluna por padrão
-      col_concurso = 'Concurso' if 'Concurso' in colunas_reais else colunas_reais[0]
-      col_data = 'Data' if 'Data' in colunas_reais else colunas_reais[1]
-
-    ultimo_concurso = df.iloc[-1][col_concurso]
-    data_sorteio = df.iloc[-1][col_data]
-    
-      st.title("🎯 Painel de Análise Preditiva")
-      st.sidebar.markdown(f"---")
-      st.sidebar.write(f"📊 **Última Atualização:**")
-      st.sidebar.info(f"Concurso: {ultimo_concurso}\nData: {data_sorteio}")
+        # Informações de Atualização
+        ultimo_concurso = df.iloc[-1]['Concurso'] # Supondo que a coluna chama 'Concurso'
+        data_sorteio = df.iloc[-1]['Data']       # Supondo que a coluna chama 'Data'
+        
+        st.title("🎯 Painel de Análise Preditiva")
+        st.sidebar.markdown(f"---")
+        st.sidebar.write(f"📊 **Última Atualização:**")
+        st.sidebar.info(f"Concurso: {ultimo_concurso}\nData: {data_sorteio}")
 
         # --- FILTROS ---
         st.sidebar.subheader("🎛️ Filtros de Equilíbrio")
