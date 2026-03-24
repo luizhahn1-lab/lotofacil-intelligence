@@ -48,14 +48,12 @@ def calcular_maior_sequencia(jogo):
             atual = 1
     return max(maior, atual)
 
-# --- FUNÇÃO PARA CARREGAR QUALQUER PLANILHA DO GITHUB (VERSÃO BLINDADA) ---
 @st.cache_data(ttl=300)
 def carregar_dados_github(url):
     try:
         resp = requests.get(url, timeout=15)
         if resp.status_code == 200:
             df_temp = pd.read_excel(io.BytesIO(resp.content), engine='openpyxl')
-            # Remove espaços em branco dos nomes das colunas (Ex: " Validade " vira "Validade")
             df_temp.columns = df_temp.columns.str.strip()
             return df_temp
         return None
@@ -63,7 +61,7 @@ def carregar_dados_github(url):
         st.error(f"Erro de conexão: {e}")
         return None
 
-# --- SISTEMA DE LOGIN (COM TRATAMENTO DE ERROS DE COLUNA) ---
+# --- SISTEMA DE LOGIN ---
 def login():
     if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
     if not st.session_state["autenticado"]:
@@ -71,11 +69,9 @@ def login():
         df_users = carregar_dados_github(URL_USUARIOS)
         
         if df_users is not None:
-            # Verifica se as colunas essenciais existem, se não, avisa o admin
             colunas_necessarias = ['Usuario', 'Senha', 'Validade']
-            colunas_faltando = [c for c in colunas_necessarias if c not in df_users.columns]
-            if colunas_faltando:
-                st.error(f"⚠️ Erro na planilha Usuarios.xlsx! Faltam as colunas: {', '.join(colunas_faltando)}")
+            if not all(c in df_users.columns for c in colunas_necessarias):
+                st.error("⚠️ Erro: Colunas 'Usuario', 'Senha' ou 'Validade' não encontradas na planilha.")
                 return False
 
             col1, col2, col3 = st.columns([1,2,1])
@@ -87,9 +83,7 @@ def login():
                         row = df_users[df_users['Usuario'].astype(str) == u_in]
                         if not row.empty:
                             try:
-                                # Tenta ler a data no formato brasileiro DD/MM/AAAA
                                 data_exp = pd.to_datetime(row.iloc[0]['Validade'], dayfirst=True)
-                                
                                 if str(s_in) == str(row.iloc[0]['Senha']):
                                     if datetime.now() <= data_exp:
                                         st.session_state.update({"autenticado": True, "user": u_in, "val": data_exp})
@@ -99,8 +93,6 @@ def login():
                             except Exception as e:
                                 st.error(f"Erro no formato da data: {e}")
                         else: st.error("❌ Usuário não encontrado.")
-        else:
-            st.error("⚠️ Não foi possível carregar a lista de usuários do GitHub.")
         return False
     return True
 
@@ -108,7 +100,17 @@ def login():
 if login():
     df = carregar_dados_github(URL_RESULTADOS)
     if df is not None:
+        # Pega info do último concurso
+        ultima_linha = df.iloc[-1]
+        num_concurso = ultima_linha[0]
+        data_bruta = ultima_linha[1]
+        try:
+            data_exibicao = pd.to_datetime(data_bruta).strftime('%d/%m/%Y')
+        except:
+            data_exibicao = str(data_bruta)
+
         st.markdown(f"<h1 style='text-align: center; color: #ffc107;'>💰 Lotofácil Intelligence VIP</h1>", unsafe_allow_html=True)
+        st.success(f"✅ **DADOS ATUALIZADOS** | Último Concurso: **{num_concurso}** | Data: **{data_exibicao}**")
         
         with st.sidebar:
             st.success(f"👤 {st.session_state['user']}")
@@ -153,7 +155,6 @@ if login():
                     j = sorted(random.choices(dezenas, weights=pesos, k=15))
                     if len(set(j)) < 15: continue
                     
-                    # Verificação
                     if (lim_impares[0] <= len([n for n in j if n%2!=0]) <= lim_impares[1] and
                         lim_primos[0] <= len(set(j)&PRIMOS) <= lim_primos[1] and
                         lim_moldura[0] <= len(set(j)&MOLDURA) <= lim_moldura[1] and
