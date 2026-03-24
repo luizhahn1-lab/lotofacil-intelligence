@@ -48,42 +48,59 @@ def calcular_maior_sequencia(jogo):
             atual = 1
     return max(maior, atual)
 
+# --- FUNÇÃO PARA CARREGAR QUALQUER PLANILHA DO GITHUB (VERSÃO BLINDADA) ---
 @st.cache_data(ttl=300)
 def carregar_dados_github(url):
     try:
         resp = requests.get(url, timeout=15)
-        return pd.read_excel(io.BytesIO(resp.content), engine='openpyxl') if resp.status_code == 200 else None
-    except: return None
+        if resp.status_code == 200:
+            df_temp = pd.read_excel(io.BytesIO(resp.content), engine='openpyxl')
+            # Remove espaços em branco dos nomes das colunas (Ex: " Validade " vira "Validade")
+            df_temp.columns = df_temp.columns.str.strip()
+            return df_temp
+        return None
+    except Exception as e:
+        st.error(f"Erro de conexão: {e}")
+        return None
 
-# --- SISTEMA DE LOGIN ---
+# --- SISTEMA DE LOGIN (COM TRATAMENTO DE ERROS DE COLUNA) ---
 def login():
     if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
     if not st.session_state["autenticado"]:
         st.markdown("<h1 style='text-align: center;'>🔐 Lotofácil VIP - Acesso</h1>", unsafe_allow_html=True)
         df_users = carregar_dados_github(URL_USUARIOS)
-        col1, col2, col3 = st.columns([1,2,1])
-        with col2:
-            with st.form("login_form"):
-                u_in = st.text_input("Usuário")
-                s_in = st.text_input("Senha", type="password")
-                if st.form_submit_button("ACESSAR SISTEMA"):
-                    if df_users is not None:
+        
+        if df_users is not None:
+            # Verifica se as colunas essenciais existem, se não, avisa o admin
+            colunas_necessarias = ['Usuario', 'Senha', 'Validade']
+            colunas_faltando = [c for c in colunas_necessarias if c not in df_users.columns]
+            if colunas_faltando:
+                st.error(f"⚠️ Erro na planilha Usuarios.xlsx! Faltam as colunas: {', '.join(colunas_faltando)}")
+                return False
+
+            col1, col2, col3 = st.columns([1,2,1])
+            with col2:
+                with st.form("login_form"):
+                    u_in = st.text_input("Usuário")
+                    s_in = st.text_input("Senha", type="password")
+                    if st.form_submit_button("ACESSAR SISTEMA"):
                         row = df_users[df_users['Usuario'].astype(str) == u_in]
                         if not row.empty:
-                            # Tenta ler a data no formato brasileiro DD/MM/AAAA
                             try:
+                                # Tenta ler a data no formato brasileiro DD/MM/AAAA
                                 data_exp = pd.to_datetime(row.iloc[0]['Validade'], dayfirst=True)
-                            except:
-                                data_exp = pd.to_datetime(row.iloc[0]['Validade'])
-                            
-                            if str(s_in) == str(row.iloc[0]['Senha']):
-                                if datetime.now() <= data_exp:
-                                    st.session_state.update({"autenticado": True, "user": u_in, "val": data_exp})
-                                    st.rerun()
-                                else: st.error("❌ Licença Expirada.")
-                            else: st.error("❌ Senha Incorreta.")
+                                
+                                if str(s_in) == str(row.iloc[0]['Senha']):
+                                    if datetime.now() <= data_exp:
+                                        st.session_state.update({"autenticado": True, "user": u_in, "val": data_exp})
+                                        st.rerun()
+                                    else: st.error("❌ Sua licença expirou!")
+                                else: st.error("❌ Senha incorreta.")
+                            except Exception as e:
+                                st.error(f"Erro no formato da data: {e}")
                         else: st.error("❌ Usuário não encontrado.")
-                    else: st.error("⚠️ Erro ao carregar usuários.")
+        else:
+            st.error("⚠️ Não foi possível carregar a lista de usuários do GitHub.")
         return False
     return True
 
