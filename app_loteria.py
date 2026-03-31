@@ -57,9 +57,7 @@ def carregar_dados_github(url):
             df_temp.columns = df_temp.columns.str.strip()
             return df_temp
         return None
-    except Exception as e:
-        st.error(f"Erro de conexão: {e}")
-        return None
+    except: return None
 
 # --- SISTEMA DE LOGIN ---
 def login():
@@ -67,13 +65,7 @@ def login():
     if not st.session_state["autenticado"]:
         st.markdown("<h1 style='text-align: center;'>🔐 Lotofácil VIP - Acesso</h1>", unsafe_allow_html=True)
         df_users = carregar_dados_github(URL_USUARIOS)
-        
         if df_users is not None:
-            colunas_necessarias = ['Usuario', 'Senha', 'Validade']
-            if not all(c in df_users.columns for c in colunas_necessarias):
-                st.error("⚠️ Erro: Colunas 'Usuario', 'Senha' ou 'Validade' não encontradas na planilha.")
-                return False
-
             col1, col2, col3 = st.columns([1,2,1])
             with col2:
                 with st.form("login_form"):
@@ -88,10 +80,9 @@ def login():
                                     if datetime.now() <= data_exp:
                                         st.session_state.update({"autenticado": True, "user": u_in, "val": data_exp})
                                         st.rerun()
-                                    else: st.error("❌ Sua licença expirou!")
+                                    else: st.error("❌ Licença expirada.")
                                 else: st.error("❌ Senha incorreta.")
-                            except Exception as e:
-                                st.error(f"Erro no formato da data: {e}")
+                            except: st.error("Erro no formato da data na planilha.")
                         else: st.error("❌ Usuário não encontrado.")
         return False
     return True
@@ -100,18 +91,41 @@ def login():
 if login():
     df = carregar_dados_github(URL_RESULTADOS)
     if df is not None:
-        # Pega info do último concurso
+        # 1. Informações do último concurso
         ultima_linha = df.iloc[-1]
         num_concurso = ultima_linha[0]
-        data_bruta = ultima_linha[1]
-        try:
-            data_exibicao = pd.to_datetime(data_bruta).strftime('%d/%m/%Y')
-        except:
-            data_exibicao = str(data_bruta)
+        data_exibicao = pd.to_datetime(ultima_linha[1]).strftime('%d/%m/%Y')
 
         st.markdown(f"<h1 style='text-align: center; color: #ffc107;'>💰 Lotofácil Intelligence VIP</h1>", unsafe_allow_html=True)
-        st.success(f"✅ **DADOS ATUALIZADOS** | Último Concurso: **{num_concurso}** | Data: **{data_exibicao}**")
+        st.success(f"✅ **DADOS ATUALIZADOS** | Concurso: **{num_concurso}** | Data: **{data_exibicao}**")
+
+        # 2. CÁLCULO DE MÉDIAS (Últimos 100 Jogos)
+        df_100 = df.tail(100).copy()
+        cols_bolas = [c for c in df.columns if 'Bola' in c] or df.columns[2:17].tolist()
         
+        def calc_metricas(linha):
+            jogo = linha[cols_bolas].astype(int).tolist()
+            return pd.Series({
+                'imp': len([n for n in jogo if n % 2 != 0]),
+                'pri': len(set(jogo) & PRIMOS),
+                'mol': len(set(jogo) & MOLDURA),
+                'fib': len(set(jogo) & FIBONACCI),
+                'som': sum(jogo),
+                'z15': len([n for n in jogo if 1 <= n <= 15])
+            })
+        
+        medias = df_100.apply(calc_metricas, axis=1).mean().round(1)
+
+        st.markdown("### 📊 Médias Reais (Últimos 100 Concursos)")
+        m1, m2, m3, m4, m5, m6 = st.columns(6)
+        m1.metric("Ímpares", medias['imp'])
+        m2.metric("Primos", medias['pri'])
+        m3.metric("Moldura", medias['mol'])
+        m4.metric("Fibonacci", medias['fib'])
+        m5.metric("Soma", int(medias['som']))
+        m6.metric("01 a 15", medias['z15'])
+        st.divider()
+
         with st.sidebar:
             st.success(f"👤 {st.session_state['user']}")
             st.info(f"📅 Válido até: {st.session_state['val'].strftime('%d/%m/%Y')}")
@@ -123,13 +137,13 @@ if login():
             lim_fibonacci = st.slider("Fibonacci", 2, 6, (3, 5))
             lim_soma = st.slider("Soma Total", 150, 250, (180, 220))
             lim_seq = st.slider("Máx. Sequência", 2, 10, 4)
+            lim_01_15 = st.slider("Dezenas entre 01 e 15", 5, 12, 9) # NOVO FILTRO
             if st.button("SAIR"): 
                 st.session_state["autenticado"] = False
                 st.rerun()
 
         # Z-SCORE
-        cols = [c for c in df.columns if 'Bola' in c] or df.columns[2:17].tolist()
-        df_n, total = df[cols], len(df)
+        df_n, total = df[cols_bolas], len(df)
         stats = []
         for n in range(1, 26):
             idx = df.index[df_n.isin([n]).any(axis=1)].tolist()
@@ -138,12 +152,12 @@ if login():
             stats.append({'Dezena': f"{n:02d}", 'Z-Score': round(z, 2)})
         ranking = pd.DataFrame(stats).sort_values('Z-Score', ascending=False)
 
-        aba1, aba2 = st.tabs(["📊 Tendências", "🎲 Gerador"])
+        aba1, aba2 = st.tabs(["📊 Tendências (Z-Score)", "🎲 Gerador Inteligente"])
         with aba1:
             st.bar_chart(ranking.set_index('Dezena'), color="#28a745")
         
         with aba2:
-            if st.button("🚀 GERAR JOGOS VIP"):
+            if st.button("🚀 GERAR JOGOS COM ESTRATÉGIA"):
                 dezenas = ranking['Dezena'].astype(int).tolist()
                 pesos = (ranking['Z-Score'] + 3).clip(lower=0.1).tolist()
                 validos = []
@@ -155,12 +169,17 @@ if login():
                     j = sorted(random.choices(dezenas, weights=pesos, k=15))
                     if len(set(j)) < 15: continue
                     
+                    # Contagem 01-15
+                    qtd_01_15 = len([n for n in j if 1 <= n <= 15])
+
                     if (lim_impares[0] <= len([n for n in j if n%2!=0]) <= lim_impares[1] and
                         lim_primos[0] <= len(set(j)&PRIMOS) <= lim_primos[1] and
                         lim_moldura[0] <= len(set(j)&MOLDURA) <= lim_moldura[1] and
                         lim_fibonacci[0] <= len(set(j)&FIBONACCI) <= lim_fibonacci[1] and
                         lim_soma[0] <= sum(j) <= lim_soma[1] and
-                        calcular_maior_sequencia(j) <= lim_seq):
+                        calcular_maior_sequencia(j) <= lim_seq and
+                        qtd_01_15 == lim_01_15): # Aplicação do novo filtro
+                        
                         validos.append(j)
                         prog.progress(len(validos)/qtd_jogos)
 
@@ -170,5 +189,5 @@ if login():
                         st.markdown(f"<div class='card-jogo'><b>Jogo {i+1}</b><br>{bolas}</div>", unsafe_allow_html=True)
                     output = io.BytesIO()
                     pd.DataFrame(validos).to_excel(output, index=False)
-                    st.download_button("📥 BAIXAR EXCEL", output.getvalue(), "jogos.xlsx")
-                else: st.error("❌ Ajuste os filtros!")
+                    st.download_button("📥 BAIXAR EXCEL", output.getvalue(), "jogos_vip.xlsx")
+                else: st.error("❌ Filtros muito rígidos! Tente ajustar as margens.")
