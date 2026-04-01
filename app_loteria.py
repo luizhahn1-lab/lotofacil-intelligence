@@ -164,7 +164,7 @@ if login():
                 tentativas = 0
                 prog = st.progress(0)
                 
-                while len(validos) < qtd_jogos and tentativas < 20000:
+                while len(validos) < qtd_jogos and tentativas < 10000:
                     tentativas += 1
                     j = sorted(random.choices(dezenas, weights=pesos, k=15))
                     if len(set(j)) < 15: continue
