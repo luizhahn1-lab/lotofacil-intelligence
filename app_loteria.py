@@ -24,12 +24,20 @@ st.markdown("""
         background-color: #1e2130; padding: 15px; border-radius: 15px; 
         margin-bottom: 10px; border-left: 5px solid #28a745;
     }
+    /* Estilo para o botão de cadastro externo */
+    .btn-cadastro {
+        display: block; width: 100%; background-color: #ffc107; color: black !important;
+        text-align: center; padding: 15px; border-radius: 15px; font-weight: bold;
+        text-decoration: none; margin-top: 10px; transition: 0.3s;
+    }
+    .btn-cadastro:hover { background-color: #e0a800; transform: scale(1.02); }
     </style>
     """, unsafe_allow_html=True)
 
-# --- LINKS DO GITHUB ---
+# --- LINKS DO GITHUB E CADASTRO ---
 URL_RESULTADOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Resultados.xlsx"
 URL_USUARIOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Usuarios.xlsx"
+URL_GOOGLE_FORMS = "COLE_AQUI_O_LINK_DO_SEU_GOOGLE_FORMS" # <--- INSIRA O LINK AQUI
 
 # --- CONSTANTES MATEMÁTICAS ---
 PRIMOS = {2, 3, 5, 7, 11, 13, 17, 19, 23}
@@ -59,31 +67,43 @@ def carregar_dados_github(url):
         return None
     except: return None
 
-# --- SISTEMA DE LOGIN ---
+# --- SISTEMA DE LOGIN COM CADASTRO ---
 def login():
     if "autenticado" not in st.session_state: st.session_state["autenticado"] = False
     if not st.session_state["autenticado"]:
-        st.markdown("<h1 style='text-align: center;'>🔐 Lotofácil VIP - Acesso</h1>", unsafe_allow_html=True)
-        df_users = carregar_dados_github(URL_USUARIOS)
-        if df_users is not None:
-            col1, col2, col3 = st.columns([1,2,1])
-            with col2:
+        st.markdown("<h1 style='text-align: center;'>🔐 Painel Lotofácil Intelligence</h1>", unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns([1,2,1])
+        with col2:
+            tab_log, tab_reg = st.tabs(["Acessar Conta", "Criar Cadastro VIP"])
+            
+            with tab_log:
+                df_users = carregar_dados_github(URL_USUARIOS)
                 with st.form("login_form"):
-                    u_in = st.text_input("Usuário")
+                    u_in = st.text_input("Usuário (E-mail)")
                     s_in = st.text_input("Senha", type="password")
-                    if st.form_submit_button("ACESSAR SISTEMA"):
-                        row = df_users[df_users['Usuario'].astype(str) == u_in]
-                        if not row.empty:
-                            try:
-                                data_exp = pd.to_datetime(row.iloc[0]['Validade'], dayfirst=True)
-                                if str(s_in) == str(row.iloc[0]['Senha']):
-                                    if datetime.now() <= data_exp:
-                                        st.session_state.update({"autenticado": True, "user": u_in, "val": data_exp})
-                                        st.rerun()
-                                    else: st.error("❌ Licença expirada.")
-                                else: st.error("❌ Senha incorreta.")
-                            except: st.error("Erro no formato da data na planilha.")
-                        else: st.error("❌ Usuário não encontrado.")
+                    if st.form_submit_button("ENTRAR NO SISTEMA"):
+                        if df_users is not None:
+                            row = df_users[df_users['Usuario'].astype(str) == u_in]
+                            if not row.empty:
+                                try:
+                                    data_exp = pd.to_datetime(row.iloc[0]['Validade'], dayfirst=True)
+                                    if str(s_in) == str(row.iloc[0]['Senha']):
+                                        if datetime.now() <= data_exp:
+                                            st.session_state.update({"autenticado": True, "user": u_in, "val": data_exp})
+                                            st.rerun()
+                                        else: st.error("❌ Licença expirada! Renove seu acesso.")
+                                    else: st.error("❌ Senha incorreta.")
+                                except: st.error("Erro no processamento da validade.")
+                            else: st.error("❌ Usuário não cadastrado.")
+                        else: st.error("Erro ao conectar com servidor de usuários.")
+
+            with tab_reg:
+                st.markdown("### 🚀 Comece a lucrar agora!")
+                st.write("Ainda não tem acesso ao Gerador VIP e às Estratégias do E-book? Clique no botão abaixo para solicitar seu cadastro.")
+                st.markdown(f'<a href="{URL_GOOGLE_FORMS}" target="_blank" class="btn-cadastro">📝 SOLICITAR MEU CADASTRO VIP</a>', unsafe_allow_html=True)
+                st.info("💡 Após preencher o formulário, nosso suporte validará seus dados e liberará seu login em instantes.")
+
         return False
     return True
 
@@ -137,7 +157,7 @@ if login():
             lim_fibonacci = st.slider("Fibonacci", 2, 6, (3, 5))
             lim_soma = st.slider("Soma Total", 150, 250, (180, 220))
             lim_seq = st.slider("Máx. Sequência", 2, 10, 4)
-            lim_01_15 = st.slider("Dezenas entre 01 e 15", 5, 12, 9) # NOVO FILTRO
+            lim_01_15 = st.slider("Dezenas entre 01 e 15", 5, 12, 9) 
             if st.button("SAIR"): 
                 st.session_state["autenticado"] = False
                 st.rerun()
@@ -169,7 +189,6 @@ if login():
                     j = sorted(random.choices(dezenas, weights=pesos, k=15))
                     if len(set(j)) < 15: continue
                     
-                    # Contagem 01-15
                     qtd_01_15 = len([n for n in j if 1 <= n <= 15])
 
                     if (lim_impares[0] <= len([n for n in j if n%2!=0]) <= lim_impares[1] and
@@ -178,7 +197,7 @@ if login():
                         lim_fibonacci[0] <= len(set(j)&FIBONACCI) <= lim_fibonacci[1] and
                         lim_soma[0] <= sum(j) <= lim_soma[1] and
                         calcular_maior_sequencia(j) <= lim_seq and
-                        qtd_01_15 == lim_01_15): # Aplicação do novo filtro
+                        qtd_01_15 == lim_01_15): 
                         
                         validos.append(j)
                         prog.progress(len(validos)/qtd_jogos)
@@ -190,4 +209,4 @@ if login():
                     output = io.BytesIO()
                     pd.DataFrame(validos).to_excel(output, index=False)
                     st.download_button("📥 BAIXAR EXCEL", output.getvalue(), "jogos_vip.xlsx")
-                else: st.error("❌ Filtros muito rígidos! Tente ajustar as margens.")
+                else: st.error("❌ Ajuste seus filtros!")
