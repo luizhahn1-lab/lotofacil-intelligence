@@ -108,13 +108,22 @@ def login():
     return True
 
 # --- PROGRAMA PRINCIPAL ---
+# --- SUBSTITUA ESSE BLOCO NO SEU CÓDIGO ---
 if login():
     df = carregar_dados_github(URL_RESULTADOS)
     if df is not None:
-        # 1. Informações do último concurso
+        # 1. Informações do último concurso (FORMA ROBUSTA)
         ultima_linha = df.iloc[-1]
-        num_concurso = ultima_linha[0]
-        data_exibicao = pd.to_datetime(ultima_linha[1]).strftime('%d/%m/%Y')
+        
+        # Em vez de [0], usamos .iloc[0] para pegar o valor da primeira coluna da linha
+        num_concurso = ultima_linha.iloc[0] 
+        
+        # Para a data, pegamos a segunda coluna de forma garantida
+        data_bruta = ultima_linha.iloc[1]
+        try:
+            data_exibicao = pd.to_datetime(data_bruta).strftime('%d/%m/%Y')
+        except:
+            data_exibicao = str(data_bruta) # Caso não consiga converter, exibe o texto original
 
         st.markdown(f"<h1 style='text-align: center; color: #ffc107;'>💰 Lotofácil Intelligence VIP</h1>", unsafe_allow_html=True)
         st.success(f"✅ **DADOS ATUALIZADOS** | Concurso: **{num_concurso}** | Data: **{data_exibicao}**")
