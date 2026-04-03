@@ -37,7 +37,7 @@ st.markdown("""
 # --- LINKS DO GITHUB E CADASTRO ---
 URL_RESULTADOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Resultados.xlsx"
 URL_USUARIOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Usuarios.xlsx"
-URL_GOOGLE_FORMS = "COLE_AQUI_O_LINK_DO_SEU_GOOGLE_FORMS" # <--- INSIRA O LINK AQUI
+URL_GOOGLE_FORMS = "https://docs.google.com/forms/d/e/1FAIpQLSfuGO5ZbDKxb2156xCI4FSh6ardD2_cVCHLFBDEzZK53r8Jgw/viewform?embedded=true" # <--- INSIRA O LINK AQUI
 
 # --- CONSTANTES MATEMÁTICAS ---
 PRIMOS = {2, 3, 5, 7, 11, 13, 17, 19, 23}
