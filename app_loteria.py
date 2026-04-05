@@ -24,13 +24,17 @@ st.markdown("""
         background-color: #1e2130; padding: 15px; border-radius: 15px; 
         margin-bottom: 10px; border-left: 5px solid #28a745;
     }
-    /* Estilo para o botão de cadastro externo */
     .btn-cadastro {
         display: block; width: 100%; background-color: #ffc107; color: black !important;
         text-align: center; padding: 15px; border-radius: 15px; font-weight: bold;
         text-decoration: none; margin-top: 10px; transition: 0.3s;
     }
-    .btn-cadastro:hover { background-color: #e0a800; transform: scale(1.02); }
+    .btn-compra {
+        display: block; width: 100%; background-color: #28a745; color: white !important;
+        text-align: center; padding: 15px; border-radius: 15px; font-weight: bold;
+        text-decoration: none; margin-top: 10px; transition: 0.3s;
+    }
+    .btn-cadastro:hover, .btn-compra:hover { transform: scale(1.02); filter: brightness(1.1); }
     </style>
     """, unsafe_allow_html=True)
 
@@ -38,6 +42,7 @@ st.markdown("""
 URL_RESULTADOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Resultados.xlsx"
 URL_USUARIOS = "https://raw.githubusercontent.com/luizhahn1-lab/lotofacil-intelligence/main/Usuarios.xlsx"
 URL_GOOGLE_FORMS = "https://forms.gle/1622iQAYPQPNEuUe7"
+URL_COMPRA = "COLE_AQUI_SEU_LINK_DE_PAGAMENTO_KIWIFY" # <--- INSIRA SEU LINK DE VENDA AQUI
 
 # --- CONSTANTES MATEMÁTICAS ---
 PRIMOS = {2, 3, 5, 7, 11, 13, 17, 19, 23}
@@ -75,7 +80,7 @@ def login():
         
         col1, col2, col3 = st.columns([1,2,1])
         with col2:
-            tab_log, tab_reg = st.tabs(["Acessar Conta", "Criar Cadastro VIP"])
+            tab_log, tab_reg = st.tabs(["Acessar Conta", "Novo Membro"])
             
             with tab_log:
                 df_users = carregar_dados_github(URL_USUARIOS)
@@ -92,43 +97,42 @@ def login():
                                         if datetime.now() <= data_exp:
                                             st.session_state.update({"autenticado": True, "user": u_in, "val": data_exp})
                                             st.rerun()
-                                        else: st.error("❌ Licença expirada! Renove seu acesso.")
+                                        else: st.error("❌ Licença expirada!")
                                     else: st.error("❌ Senha incorreta.")
                                 except: st.error("Erro no processamento da validade.")
                             else: st.error("❌ Usuário não cadastrado.")
-                        else: st.error("Erro ao conectar com servidor de usuários.")
+                        else: st.error("Erro ao conectar com servidor.")
 
             with tab_reg:
                 st.markdown("### 🚀 Comece a lucrar agora!")
-                st.write("Ainda não tem acesso ao Gerador VIP e às Estratégias do E-book? Clique no botão abaixo para solicitar seu cadastro.")
-                st.markdown(f'<a href="{URL_GOOGLE_FORMS}" target="_blank" class="btn-cadastro">📝 SOLICITAR MEU CADASTRO VIP</a>', unsafe_allow_html=True)
-                st.info("💡 Após preencher o formulário, nosso suporte validará seus dados e liberará seu login em instantes.")
+                st.write("Escolha uma das opções abaixo para liberar seu acesso:")
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown(f'<a href="{URL_COMPRA}" target="_blank" class="btn-compra">💳 COMPRAR ACESSO VIP</a>', unsafe_allow_html=True)
+                with c2:
+                    st.markdown(f'<a href="{URL_GOOGLE_FORMS}" target="_blank" class="btn-cadastro">📝 JÁ PAGUEI / CADASTRO</a>', unsafe_allow_html=True)
+                
+                st.info("💡 Após a compra ou preenchimento, nosso suporte liberará seu login em instantes.")
 
         return False
     return True
 
 # --- PROGRAMA PRINCIPAL ---
-# --- SUBSTITUA ESSE BLOCO NO SEU CÓDIGO ---
 if login():
     df = carregar_dados_github(URL_RESULTADOS)
     if df is not None:
-        # 1. Informações do último concurso (FORMA ROBUSTA)
         ultima_linha = df.iloc[-1]
-        
-        # Em vez de [0], usamos .iloc[0] para pegar o valor da primeira coluna da linha
         num_concurso = ultima_linha.iloc[0] 
-        
-        # Para a data, pegamos a segunda coluna de forma garantida
         data_bruta = ultima_linha.iloc[1]
         try:
             data_exibicao = pd.to_datetime(data_bruta).strftime('%d/%m/%Y')
         except:
-            data_exibicao = str(data_bruta) # Caso não consiga converter, exibe o texto original
+            data_exibicao = str(data_bruta)
 
         st.markdown(f"<h1 style='text-align: center; color: #ffc107;'>💰 Lotofácil Intelligence VIP</h1>", unsafe_allow_html=True)
         st.success(f"✅ **DADOS ATUALIZADOS** | Concurso: **{num_concurso}** | Data: **{data_exibicao}**")
 
-        # 2. CÁLCULO DE MÉDIAS (Últimos 100 Jogos)
         df_100 = df.tail(100).copy()
         cols_bolas = [c for c in df.columns if 'Bola' in c] or df.columns[2:17].tolist()
         
@@ -155,23 +159,25 @@ if login():
         m6.metric("01 a 15", medias['z15'])
         st.divider()
 
-       with st.sidebar:
+        # --- LÓGICA DE TRAVA ANTI-REEMBOLSO ---
+        dias_restantes = (st.session_state['val'] - datetime.now()).days
+        acesso_teste = dias_restantes > 23 
+
+        with st.sidebar:
             st.success(f"👤 {st.session_state['user']}")
             st.info(f"📅 Expira em: {dias_restantes} dias")
             st.divider()
 
-            # LIMITAÇÃO DE QUANTIDADE
             if acesso_teste:
-                st.warning("⚠️ MODO DEGUSTAÇÃO ATIVO")
+                st.warning("⚠️ MODO DEGUSTAÇÃO")
                 qtd_maxima = 5
-                st.caption("O acesso ilimitado (100 jogos) é liberado após o 7º dia de membro!")
+                st.caption("O acesso a 100 jogos é liberado após o 7º dia!")
             else:
-                st.balloons() # Um mimo para quem passou dos 7 dias
                 qtd_maxima = 100
 
             qtd_jogos = st.number_input("Qtd Jogos", 1, qtd_maxima, min(10, qtd_maxima))
             
-            # FILTROS PADRÃO
+            st.subheader("⚙️ Filtros")
             lim_impares = st.slider("Ímpares", 5, 11, (7, 9))
             lim_primos = st.slider("Primos", 3, 8, (4, 6))
             lim_moldura = st.slider("Moldura", 8, 12, (9, 11))
@@ -184,15 +190,7 @@ if login():
                 st.session_state["autenticado"] = False
                 st.rerun()
 
-        # --- NA ABA DO GERADOR (Aviso Visual) ---
-        with aba2:
-            if acesso_teste:
-                st.info("🔓 **Sua conta está em período de validação.**\n\nAtualmente você pode gerar até 5 jogos por vez. Após o 7º dia, o **Modo Turbo VIP** será desbloqueado com geração de até 100 jogos e exportação completa!")
-            
-            if st.button("🚀 GERAR JOGOS COM ESTRATÉGIA"):
-                # ... (resto do código de geração continua igual) ...
-
-        # Z-SCORE
+        # --- Z-SCORE E ABAS ---
         df_n, total = df[cols_bolas], len(df)
         stats = []
         for n in range(1, 26):
@@ -203,10 +201,14 @@ if login():
         ranking = pd.DataFrame(stats).sort_values('Z-Score', ascending=False)
 
         aba1, aba2 = st.tabs(["📊 Tendências (Z-Score)", "🎲 Gerador Inteligente"])
+        
         with aba1:
             st.bar_chart(ranking.set_index('Dezena'), color="#28a745")
         
         with aba2:
+            if acesso_teste:
+                st.info("🔓 **Sua conta está em período de garantia.** No 8º dia, o Modo Turbo será liberado!")
+            
             if st.button("🚀 GERAR JOGOS COM ESTRATÉGIA"):
                 dezenas = ranking['Dezena'].astype(int).tolist()
                 pesos = (ranking['Z-Score'] + 3).clip(lower=0.1).tolist()
@@ -219,15 +221,13 @@ if login():
                     j = sorted(random.choices(dezenas, weights=pesos, k=15))
                     if len(set(j)) < 15: continue
                     
-                    qtd_01_15 = len([n for n in j if 1 <= n <= 15])
-
                     if (lim_impares[0] <= len([n for n in j if n%2!=0]) <= lim_impares[1] and
                         lim_primos[0] <= len(set(j)&PRIMOS) <= lim_primos[1] and
                         lim_moldura[0] <= len(set(j)&MOLDURA) <= lim_moldura[1] and
                         lim_fibonacci[0] <= len(set(j)&FIBONACCI) <= lim_fibonacci[1] and
                         lim_soma[0] <= sum(j) <= lim_soma[1] and
                         calcular_maior_sequencia(j) <= lim_seq and
-                        qtd_01_15 == lim_01_15): 
+                        len([n for n in j if 1 <= n <= 15]) == lim_01_15): 
                         
                         validos.append(j)
                         prog.progress(len(validos)/qtd_jogos)
@@ -239,4 +239,3 @@ if login():
                     output = io.BytesIO()
                     pd.DataFrame(validos).to_excel(output, index=False)
                     st.download_button("📥 BAIXAR EXCEL", output.getvalue(), "jogos_vip.xlsx")
-                else: st.error("❌ Ajuste seus filtros!")
