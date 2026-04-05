@@ -155,11 +155,23 @@ if login():
         m6.metric("01 a 15", medias['z15'])
         st.divider()
 
-        with st.sidebar:
+       with st.sidebar:
             st.success(f"👤 {st.session_state['user']}")
-            st.info(f"📅 Válido até: {st.session_state['val'].strftime('%d/%m/%Y')}")
+            st.info(f"📅 Expira em: {dias_restantes} dias")
             st.divider()
-            qtd_jogos = st.number_input("Qtd Jogos", 1, 100, 10)
+
+            # LIMITAÇÃO DE QUANTIDADE
+            if acesso_teste:
+                st.warning("⚠️ MODO DEGUSTAÇÃO ATIVO")
+                qtd_maxima = 5
+                st.caption("O acesso ilimitado (100 jogos) é liberado após o 7º dia de membro!")
+            else:
+                st.balloons() # Um mimo para quem passou dos 7 dias
+                qtd_maxima = 100
+
+            qtd_jogos = st.number_input("Qtd Jogos", 1, qtd_maxima, min(10, qtd_maxima))
+            
+            # FILTROS PADRÃO
             lim_impares = st.slider("Ímpares", 5, 11, (7, 9))
             lim_primos = st.slider("Primos", 3, 8, (4, 6))
             lim_moldura = st.slider("Moldura", 8, 12, (9, 11))
@@ -167,9 +179,18 @@ if login():
             lim_soma = st.slider("Soma Total", 150, 250, (180, 220))
             lim_seq = st.slider("Máx. Sequência", 2, 10, 4)
             lim_01_15 = st.slider("Dezenas entre 01 e 15", 5, 12, 9) 
+
             if st.button("SAIR"): 
                 st.session_state["autenticado"] = False
                 st.rerun()
+
+        # --- NA ABA DO GERADOR (Aviso Visual) ---
+        with aba2:
+            if acesso_teste:
+                st.info("🔓 **Sua conta está em período de validação.**\n\nAtualmente você pode gerar até 5 jogos por vez. Após o 7º dia, o **Modo Turbo VIP** será desbloqueado com geração de até 100 jogos e exportação completa!")
+            
+            if st.button("🚀 GERAR JOGOS COM ESTRATÉGIA"):
+                # ... (resto do código de geração continua igual) ...
 
         # Z-SCORE
         df_n, total = df[cols_bolas], len(df)
