@@ -107,7 +107,7 @@ def login():
 
 # --- APP PRINCIPAL ---
 if login():
-    LISTA_ADMS = ["seu-email@adm.com", "admin@teste.com"] # AJUSTE SEU EMAIL AQUI
+    LISTA_ADMS = ["Admin", "admin@teste.com"] # AJUSTE SEU EMAIL AQUI
 
     df = carregar_dados_github(URL_RESULTADOS)
     if df is not None:
